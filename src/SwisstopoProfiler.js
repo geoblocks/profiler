@@ -34,16 +34,22 @@ class SwisstopoProfiler {
    * @return {Promise}
    */
   computeProfile(segment) {
-    // TODO: round to coordinate to meter precision
+    const geom = /** @type{ol.geom.LineString} */ (segment.getGeometry());
 
-    const geom = this.geojsonFormat_.writeGeometry(segment.getGeometry());
+    // Round coordinate to meter precision by rounding to the fifth decimal place which equals about 1.1 meters.
+    // see: https://gis.stackexchange.com/a/8674
+    const lowerPrecisionCoords = /** @type{Array.<ol.Coordinate>} */
+      (geom.getCoordinates().map(coord => coord.map(c => Number.parseFloat(c.toFixed(5)))));
+    geom.setCoordinates(lowerPrecisionCoords);
+
+    const geojson = this.geojsonFormat_.writeGeometry(geom);
 
     const request = fetch(this.url_, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: `geom=${geom}&sr=2056&offset=1&elevation_models=COMB`
+      body: `geom=${geojson}&sr=2056&offset=1&elevation_models=COMB`
     });
     return request
       .then(response => response.json())
